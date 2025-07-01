@@ -3,6 +3,17 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
 
+from datetime import datetime
+
+def get_greeting():
+    hour = datetime.now().hour
+    if hour < 12:
+        return "Good morning"
+    elif hour < 17:
+        return "Good afternoon"
+    else:
+        return "Good evening"
+
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Needed for flashing messages
 
@@ -121,40 +132,59 @@ def get_product(item_code):
 def actions():
     return render_template("actions.html")
 
+#@app.route('/dashboard')
+#def dashboard():
+    # Total Products
+    #cursor.execute("SELECT COUNT(*) FROM products")
+    #total_products = cursor.fetchone()[0]
+
+    # Total Sales
+    #cursor.execute("SELECT COUNT(*) FROM sales")
+    #total_sales = cursor.fetchone()[0]
+
+    # Total Revenue
+    #cursor.execute("SELECT COALESCE(SUM(sale_price), 0) FROM sales")
+    #total_revenue = float(cursor.fetchone()[0])
+
+    # Total Profit
+    #cursor.execute("SELECT COALESCE(SUM(profit), 0) FROM sales")
+    #total_profit = float(cursor.fetchone()[0])
+
+    # Low Stock Items (<= 5)
+    #cursor.execute("""
+        #SELECT item_code, item_name, in_stock
+        #FROM products
+        #WHERE in_stock <= 5
+    #""")
+    #low_stock_items = cursor.fetchall()
+
+    #return render_template(
+        #'dashboard.html',
+        #total_products=total_products,
+        #total_sales=total_sales,
+        #total_revenue=total_revenue,
+        #total_profit=total_profit,
+        #low_stock_items=low_stock_items
+    #)
+
 @app.route('/dashboard')
 def dashboard():
-    # Total Products
+    cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM products")
     total_products = cursor.fetchone()[0]
 
-    # Total Sales
     cursor.execute("SELECT COUNT(*) FROM sales")
     total_sales = cursor.fetchone()[0]
 
-    # Total Revenue
-    cursor.execute("SELECT COALESCE(SUM(sale_price), 0) FROM sales")
-    total_revenue = float(cursor.fetchone()[0])
+    cursor.execute("SELECT SUM(profit) FROM sales")
+    total_profit = cursor.fetchone()[0] or 0
 
-    # Total Profit
-    cursor.execute("SELECT COALESCE(SUM(profit), 0) FROM sales")
-    total_profit = float(cursor.fetchone()[0])
+    greeting = get_greeting()
 
-    # Low Stock Items (<= 5)
-    cursor.execute("""
-        SELECT item_code, item_name, in_stock
-        FROM products
-        WHERE in_stock <= 5
-    """)
-    low_stock_items = cursor.fetchall()
+    return render_template("dashboard.html", total_products=total_products,
+                           total_sales=total_sales, total_profit=total_profit,
+                           greeting=greeting)
 
-    return render_template(
-        'dashboard.html',
-        total_products=total_products,
-        total_sales=total_sales,
-        total_revenue=total_revenue,
-        total_profit=total_profit,
-        low_stock_items=low_stock_items
-    )
 
 @app.route('/')
 def home():
