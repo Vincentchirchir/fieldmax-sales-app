@@ -7,11 +7,21 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Needed for flashing messages
 
 # PostgreSQL connection setup
+
+# Establish database connection
+#conn = psycopg2.connect(
+    #host="localhost",
+    #database="Fieldmax_db",
+    #user="postgres",
+    #password="2952"
+#)
+
 conn = psycopg2.connect(
-    host="localhost",
-    database="Fieldmax_db",
-    user="postgres",
-    password="2952"
+    host='dpg-d1i10rili9vc73d54u5g-a.oregon-postgres.render.com',
+    dbname='fieldmax_db_exx4',
+    user='fieldmax_db_exx4_user',
+    password='lAvVBkjMXyUrxGPBkAYWzYQNJKaOiN5j',
+    port='5432'
 )
 cursor = conn.cursor()
 
