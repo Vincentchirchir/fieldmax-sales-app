@@ -36,6 +36,25 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form['password'].strip()
+
+        cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
+        user = cursor.fetchone()
+
+        if user:
+            session['user_id'] = user[0]
+            session['username'] = user[1]
+            flash("Login successful!", "success")
+            return redirect(url_for('dashboard'))
+        else:
+            flash("Invalid username or password", "danger")
+
+    return render_template("login.html")
+
 @app.route('/upload-product', methods=['POST'])
 def upload_product():
     code = request.form['code'].strip()
