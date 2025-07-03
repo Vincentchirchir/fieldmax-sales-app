@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, session, url_for, flash, jsonify
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
@@ -35,6 +35,32 @@ conn = psycopg2.connect(
     port='5432'
 )
 cursor = conn.cursor()
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form['password'].strip()
+
+        cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
+        user = cursor.fetchone()
+
+        if user:
+            session['user_id'] = user[0]
+            session['username'] = user[1]
+            flash("Login successful!", "success")
+            return redirect(url_for('dashboard'))
+        else:
+            flash("Invalid username or password", "danger")
+
+    return render_template("login.html")
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("You have been logged out.", "info")
+    return redirect(url_for('login'))
+
 
 @app.route('/upload-product', methods=['POST'])
 def upload_product():
@@ -128,9 +154,9 @@ def get_product(item_code):
     else:
         return jsonify({'error': 'Product not found'})
 
-@app.route("/actions")
+@app.route("/login")
 def actions():
-    return render_template("actions.html")
+    return render_template("login.html")
 
 #@app.route('/dashboard')
 #def dashboard():
@@ -169,7 +195,9 @@ def actions():
 
 @app.route('/dashboard')
 def dashboard():
-    cursor = conn.cursor()
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
     cursor.execute("SELECT COUNT(*) FROM products")
     total_products = cursor.fetchone()[0]
 
@@ -185,10 +213,22 @@ def dashboard():
                            total_sales=total_sales, total_profit=total_profit,
                            greeting=greeting)
 
-
 @app.route('/')
 def home():
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
+def ensure_default_user():
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE username = %s", ('Admin',))
+    if not cur.fetchone():
+        cur.execute(
+            "INSERT INTO users (username, password) VALUES (%s, %s)",
+            ('Admin', 'A12345')
+        )
+        conn.commit()
+        print("✅ Default user created: Admin / A12345")
+    cur.close()
 
 if __name__ == '__main__':
+    ensure_default_user()  # Create Admin user if not exists
     app.run(debug=True)
