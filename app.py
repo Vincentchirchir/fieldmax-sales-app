@@ -97,12 +97,10 @@ def upload_product():
         cursor.execute("""
             UPDATE products
             SET item_name = %s,
-                buying_price = %s,
-                selling_price = %s,
                 all_stock = all_stock + %s,
                 in_stock = in_stock + %s
             WHERE item_code = %s
-        """, (name, buying, selling, added_stock, added_stock, code))
+        """, (name, added_stock, added_stock, code))
     else:
         cursor.execute("""
             INSERT INTO products (item_code, item_name, buying_price, selling_price, all_stock, in_stock)
@@ -129,10 +127,13 @@ def record_sale():
     quantity_to_sell = int(request.form['quantity'])
 
     cursor = conn.cursor()
+
+    # Get item name
     cursor.execute("SELECT item_name FROM products WHERE item_code = %s", (item_code,))
     result = cursor.fetchone()
     item_name = result[0] if result else "Unknown"
 
+    # Get FIFO batches
     cursor.execute("""
         SELECT id, buying_price, remaining_quantity
         FROM stock_entries
@@ -148,13 +149,15 @@ def record_sale():
 
         stock_id, buying_price, available_qty = batch
         to_sell = min(quantity_to_sell - sold, available_qty)
-        profit = (sale_price - buying_price) * to_sell
+        profit = (sale_price - float(buying_price)) * to_sell
 
+        # Record sale
         cursor.execute("""
             INSERT INTO sales (item_code, item_name, sale_price, buying_price, profit, quantity)
             VALUES (%s, %s, %s, %s, %s, %s)
         """, (item_code, item_name, sale_price, buying_price, profit, to_sell))
 
+        # Update remaining quantity in batch
         cursor.execute("""
             UPDATE stock_entries
             SET remaining_quantity = remaining_quantity - %s
@@ -163,6 +166,7 @@ def record_sale():
 
         sold += to_sell
 
+    # Update main stock
     cursor.execute("""
         UPDATE products
         SET in_stock = in_stock - %s
