@@ -1,32 +1,22 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from datetime import datetime
-
+from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 
 def get_greeting():
     hour = datetime.now().hour
-    if hour < 12:
+    if hour < 9:
         return "Good morning"
-    elif hour < 17:
+    elif hour < 14:
         return "Good afternoon"
     else:
         return "Good evening"
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Needed for flashing messages
+app.secret_key = 'your_secret_key'
 
 # PostgreSQL connection setup
-
-# Establish database connection
-#conn = psycopg2.connect(
-    #host="localhost",
-    #database="Fieldmax_db",
-    #user="postgres",
-    #password="2952"
-#)
-
 conn = psycopg2.connect(
     host='dpg-d1i10rili9vc73d54u5g-a.oregon-postgres.render.com',
     dbname='fieldmax_db_exx4',
@@ -36,34 +26,70 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form['email'].strip().lower()
+        password = request.form['password'].strip()
+
+        # Check if email already exists
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        existing_user = cursor.fetchone()
+        if existing_user:
+            flash("Email already in use", "warning")
+            return redirect(url_for('register'))
+
+        # Hash the password
+        hashed_password = generate_password_hash(password)
+
+        # Save user to database
+        cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", 
+                       (email, hashed_password))
+        conn.commit()
+
+        flash("Registration successful! Please log in.", "success")
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username'].strip()
+        email = request.form['email'].strip().lower()
         password = request.form['password'].strip()
 
-        cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         user = cursor.fetchone()
 
-        if user:
+        if user and check_password_hash(user[2], password):  # Assuming password is column index 2
             session['user_id'] = user[0]
-            session['username'] = user[1]
-            flash("Login successful!", "success")
+            session['email'] = user[1]
+            flash("Login successful", "success")
             return redirect(url_for('dashboard'))
         else:
-            flash("Invalid username or password", "danger")
+            flash("Invalid email or password", "danger")
 
-    return render_template("login.html")
+    return render_template('login.html', datetime=datetime)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("You’ve been logged out.", "info")
+    return redirect(url_for('login'))
 
 @app.route('/upload-product', methods=['POST'])
 def upload_product():
+    if 'user_id' not in session:
+        flash("Login required", "warning")
+        return redirect(url_for('login'))
+
     code = request.form['code'].strip()
     name = request.form['name'].strip()
     buying = float(request.form['buying'])
     selling = float(request.form['selling'])
     added_stock = int(request.form['added_stock'])
 
-    # Check if product already exists
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM products WHERE item_code = %s", (code,))
     existing = cursor.fetchone()
 
@@ -77,59 +103,74 @@ def upload_product():
                 in_stock = in_stock + %s
             WHERE item_code = %s
         """, (name, buying, selling, added_stock, added_stock, code))
-        flash("Product updated successfully!", "info")
     else:
         cursor.execute("""
             INSERT INTO products (item_code, item_name, buying_price, selling_price, all_stock, in_stock)
             VALUES (%s, %s, %s, %s, %s, %s)
         """, (code, name, buying, selling, added_stock, added_stock))
-        flash("New product uploaded successfully!", "success")
+
+    cursor.execute("""
+        INSERT INTO stock_entries (item_code, buying_price, quantity, remaining_quantity)
+        VALUES (%s, %s, %s, %s)
+    """, (code, buying, added_stock, added_stock))
 
     conn.commit()
+    flash("Product uploaded and stock batch recorded", "success")
     return redirect(url_for('dashboard'))
 
 @app.route('/record-sale', methods=['POST'])
 def record_sale():
+    if 'user_id' not in session:
+        flash("Login required", "warning")
+        return redirect(url_for('login'))
+
     item_code = request.form['item_code'].strip()
     sale_price = float(request.form['sale_price'])
-    quantity = int(request.form['quantity'])
+    quantity_to_sell = int(request.form['quantity'])
 
-    # Fetch product info from database
-    cursor.execute(
-        "SELECT item_name, buying_price, in_stock FROM products WHERE item_code = %s",
-        (item_code,)
-    )
-    product = cursor.fetchone()
+    cursor = conn.cursor()
+    cursor.execute("SELECT item_name FROM products WHERE item_code = %s", (item_code,))
+    result = cursor.fetchone()
+    item_name = result[0] if result else "Unknown"
 
-    if not product:
-        flash("Product not found in database.", "danger")
-        return redirect(url_for('dashboard'))
+    cursor.execute("""
+        SELECT id, buying_price, remaining_quantity
+        FROM stock_entries
+        WHERE item_code = %s AND remaining_quantity > 0
+        ORDER BY date_received ASC
+    """, (item_code,))
+    stock_batches = cursor.fetchall()
 
-    item_name, buying_price, current_stock = product
+    sold = 0
+    for batch in stock_batches:
+        if sold >= quantity_to_sell:
+            break
 
-    # Validate stock
-    if current_stock < quantity:
-        flash("Not enough stock to complete the sale.", "warning")
-        return redirect(url_for('dashboard'))
+        stock_id, buying_price, available_qty = batch
+        to_sell = min(quantity_to_sell - sold, available_qty)
+        profit = (sale_price - buying_price) * to_sell
 
-    # Calculate profit per item
-    profit = sale_price - float(buying_price)
-
-    # Update stock
-    cursor.execute(
-        "UPDATE products SET in_stock = in_stock - %s WHERE item_code = %s",
-        (quantity, item_code)
-    )
-
-    # Insert individual sale records
-    for _ in range(quantity):
         cursor.execute("""
-            INSERT INTO sales (item_code, item_name, sale_price, buying_price, profit, quantity, sale_date)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (item_code, item_name, sale_price, buying_price, profit, 1, datetime.now()))
+            INSERT INTO sales (item_code, item_name, sale_price, buying_price, profit, quantity)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (item_code, item_name, sale_price, buying_price, profit, to_sell))
+
+        cursor.execute("""
+            UPDATE stock_entries
+            SET remaining_quantity = remaining_quantity - %s
+            WHERE id = %s
+        """, (to_sell, stock_id))
+
+        sold += to_sell
+
+    cursor.execute("""
+        UPDATE products
+        SET in_stock = in_stock - %s
+        WHERE item_code = %s
+    """, (quantity_to_sell, item_code))
 
     conn.commit()
-    flash("Sale recorded successfully!", "success")
+    flash(f"{quantity_to_sell} items of {item_name} sold using FIFO", "success")
     return redirect(url_for('dashboard'))
 
 @app.route('/get-product/<item_code>')
@@ -149,45 +190,16 @@ def get_product(item_code):
 
 @app.route("/actions")
 def actions():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     return render_template("actions.html")
-
-#@app.route('/dashboard')
-#def dashboard():
-    # Total Products
-    #cursor.execute("SELECT COUNT(*) FROM products")
-    #total_products = cursor.fetchone()[0]
-
-    # Total Sales
-    #cursor.execute("SELECT COUNT(*) FROM sales")
-    #total_sales = cursor.fetchone()[0]
-
-    # Total Revenue
-    #cursor.execute("SELECT COALESCE(SUM(sale_price), 0) FROM sales")
-    #total_revenue = float(cursor.fetchone()[0])
-
-    # Total Profit
-    #cursor.execute("SELECT COALESCE(SUM(profit), 0) FROM sales")
-    #total_profit = float(cursor.fetchone()[0])
-
-    # Low Stock Items (<= 5)
-    #cursor.execute("""
-        #SELECT item_code, item_name, in_stock
-        #FROM products
-        #WHERE in_stock <= 5
-    #""")
-    #low_stock_items = cursor.fetchall()
-
-    #return render_template(
-        #'dashboard.html',
-        #total_products=total_products,
-        #total_sales=total_sales,
-        #total_revenue=total_revenue,
-        #total_profit=total_profit,
-        #low_stock_items=low_stock_items
-    #)
 
 @app.route('/dashboard')
 def dashboard():
+    if 'user_id' not in session:
+        flash("Please log in to continue.", "warning")
+        return redirect(url_for('login'))
+
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM products")
     total_products = cursor.fetchone()[0]
@@ -204,27 +216,11 @@ def dashboard():
                            total_sales=total_sales, total_profit=total_profit,
                            greeting=greeting)
 
-
 @app.route('/')
 def home():
-    return redirect(url_for('dashboard'))
-
-@app.route('/')
-def home():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
-
-def ensure_default_user():
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE username = %s", ('Admin',))
-    if not cur.fetchone():
-        cur.execute(
-            "INSERT INTO users (username, password) VALUES (%s, %s)",
-            ('Admin', 'A12345')
-        )
-        conn.commit()
-        print("✅ Default user created: Admin / A12345")
-    cur.close()
-
 
 if __name__ == '__main__':
     app.run(debug=True)
