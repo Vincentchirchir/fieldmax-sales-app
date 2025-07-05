@@ -50,7 +50,7 @@ def register():
         flash("Registration successful! Please log in.", "success")
         return redirect(url_for('login'))
 
-    return render_template('register.html')
+    return render_template('register.html', datetime=datetime)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -115,6 +115,7 @@ def upload_product():
     conn.commit()
     flash("Product uploaded and stock batch recorded", "success")
     return redirect(url_for('dashboard'))
+    
 
 @app.route('/record-sale', methods=['POST'])
 def record_sale():
@@ -264,27 +265,32 @@ def dashboard():
     greeting = get_greeting()
 
     return render_template(
-        "dashboard.html",
-        greeting=greeting,
-        total_products=total_products,
-        total_sales=all_sales,
-        total_profit=all_profit,
-        daily_sales=sales_data['daily_sales'],
-        weekly_sales=sales_data['weekly_sales'],
-        monthly_sales=sales_data['monthly_sales'],
-        daily_profit=sales_data['daily_profit'],
-        weekly_profit=sales_data['weekly_profit'],
-        monthly_profit=sales_data['monthly_profit'],
-        latest_sales=latest_sales,
-        top_selling_items=top_selling_items,
-        low_stock_items=low_stock_items
-    )
+    "dashboard.html",
+    greeting=greeting,
+    total_products=total_products,
+    total_sales=all_sales,
+    total_profit=all_profit,
+    daily_sales=sales_data['daily_sales'],
+    weekly_sales=sales_data['weekly_sales'],
+    monthly_sales=sales_data['monthly_sales'],
+    daily_profit=sales_data['daily_profit'],
+    weekly_profit=sales_data['weekly_profit'],
+    monthly_profit=sales_data['monthly_profit'],
+    latest_sales=latest_sales,
+    top_selling_items=top_selling_items,
+    low_stock_items=low_stock_items,
+    datetime=datetime
+)
 
 @app.route('/')
 def home():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
+
+@app.context_processor
+def inject_datetime():
+    return {'datetime': datetime}
 
 if __name__ == '__main__':
     app.run(debug=True)
