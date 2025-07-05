@@ -6,9 +6,9 @@ from datetime import datetime
 
 def get_greeting():
     hour = datetime.now().hour
-    if hour < 2:
+    if hour < 18:
         return "Good morning"
-    elif hour < 7:
+    elif hour < 12:
         return "Good afternoon"
     else:
         return "Good evening"
