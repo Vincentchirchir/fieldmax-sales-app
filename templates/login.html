@@ -5,111 +5,92 @@
   <title>Login | Fieldmax</title>
   <style>
     body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: #f4f4f4;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+        background-color: #121212;
+        color: #e0e0e0;
+        font-family: 'Segoe UI', sans-serif;
     }
 
-    .login-box {
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-      width: 360px;
+    .login-container {
+        max-width: 400px;
+        margin: 8% auto 3%;
+        background-color: #1f1f1f;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        text-align: center;
     }
 
-    .logo {
-      text-align: center;
-      font-size: 20px;
-      font-weight: bold;
-      color: #0366ff;
-      margin-bottom: 20px;
+    h2 {
+        color: #42a5f5;
+        margin-bottom: 1.2rem;
     }
 
-    label {
-      font-size: 14px;
-      display: block;
-      margin-bottom: 5px;
-      color: #333;
-    }
-
-    input[type="text"],
+    input[type="email"],
     input[type="password"] {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      margin-bottom: 15px;
-      font-size: 14px;
+        width: 100%;
+        padding: 10px;
+        margin: 0.5rem 0 1rem;
+        background-color: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 5px;
+        color: #fff;
+    }
+
+    input[type="email"]:focus,
+    input[type="password"]:focus {
+        border-color: #42a5f5;
+        outline: none;
     }
 
     button {
-      width: 100%;
-      padding: 10px;
-      background: #0366ff;
-      border: none;
-      color: white;
-      font-weight: bold;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 16px;
+        background-color: #1e88e5;
+        color: #fff;
+        padding: 10px 15px;
+        width: 100%;
+        border: none;
+        border-radius: 5px;
+        font-weight: bold;
+        transition: background-color 0.3s;
     }
 
     button:hover {
-      background: #024ec9;
+        background-color: #1565c0;
     }
 
     .register-link {
-      text-align: center;
-      margin-top: 10px;
-      font-size: 13px;
+        margin-top: 1rem;
+        font-size: 0.9rem;
     }
 
     .register-link a {
-      color: #0366ff;
-      text-decoration: none;
+        color: #90caf9;
+        text-decoration: none;
     }
 
-    .alert {
-      padding: 10px;
-      border-radius: 5px;
-      font-size: 14px;
-      margin-bottom: 15px;
+    .register-link a:hover {
+        text-decoration: underline;
     }
 
-    .alert-success {
-      background-color: #d4edda;
-      color: #155724;
+    footer {
+        margin-top: 2rem;
+        color: #aaa;
+        font-size: 0.85rem;
     }
 
-    .alert-danger {
-      background-color: #f8d7da;
-      color: #721c24;
-    }
-
-    .alert-warning {
-      background-color: #fff3cd;
-      color: #856404;
-    }
-
-    .btn-close {
-      float: right;
-      font-weight: bold;
-      background: none;
-      border: none;
-      cursor: pointer;
+    .logo-img {
+        height: 50px;
+        margin-bottom: 1rem;
     }
   </style>
 </head>
 <body>
-  <form class="login-box" action="/login" method="POST">
-    <div class="logo">FIELDMAX LOGIN</div>
 
+<div class="login-container">
+  <img src="{{ url_for('static', filename='images/fieldmax_logo/fieldmax_icon.png') }}" alt="Fieldmax Logo" class="logo-img">
+
+  <h2>FIELDMAX LOGIN</h2>
+
+  <form action="/login" method="POST">
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -123,16 +104,22 @@
     {% endwith %}
 
     <label for="email">Email</label>
-    <input type="text" name="email" placeholder="Enter email" required>
+    <input type="email" name="email" placeholder="Enter email" required>
 
     <label for="password">Password</label>
     <input type="password" name="password" placeholder="Enter password" required>
 
     <button type="submit">Login</button>
-
-    <div class="register-link">
-      Don't have an account? <a href="/register">Register</a>
-    </div>
   </form>
+
+  <div class="register-link">
+      Don’t have an account? <a href="{{ url_for('register') }}">Register</a>
+  </div>
+
+  <footer>
+      © {{ datetime.utcnow().year }} Fieldmax Shop. All rights reserved.
+  </footer>
+</div>
+
 </body>
 </html>
