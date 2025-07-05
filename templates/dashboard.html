@@ -34,7 +34,13 @@
             color: white;
         }
         .main {
-            padding: 2rem;
+            padding: 0;
+        }
+        .topbar {
+            background-color: #0066cc;
+            padding: 2rem 2rem;
+            color: white;
+            border-bottom: 2px solid #004080;
         }
         .card {
             border: none;
@@ -45,15 +51,10 @@
             font-size: 1.2rem;
             color: #333;
         }
-        .card p {
+        .card p, .card h3 {
             font-size: 1.8rem;
             font-weight: bold;
             color: #007bff;
-        }
-        .greeting {
-            font-size: 2rem;
-            font-weight: 600;
-            color: #333;
         }
     </style>
 </head>
@@ -61,25 +62,24 @@
 <div class="container-fluid">
     <div class="row">
         <!-- Sidebar -->
-            <div class="col-md-2 sidebar">
-                <h5 class="text-white text-center mb-4">
-                    <img src="{{ url_for('static', filename='images/fieldmax_logo/fieldmax_icon.png') }}" alt="Fieldmax Logo" style="height: 40px;"> FIELDMAX
-                </h5>
-                <a href="#" class="active" onclick="showSection('dashboard')">Dashboard</a>
-                <a href="#" onclick="showSection('upload')">Upload Product</a>
-                <a href="#" onclick="showSection('sale')">Record Sale</a>
-                 <a href="#" onclick="showSection('employees')">Employees</a>
-                 <a href="#" onclick="showSection('settings')">Settings</a>
-                <a href="{{ url_for('logout') }}" class="text-danger">Logout</a>
-            </div>
+        <div class="col-md-2 sidebar">
+            <h5 class="text-white text-center mb-4">
+                <img src="{{ url_for('static', filename='images/fieldmax_logo/fieldmax_icon.png') }}" alt="Fieldmax Logo" style="height: 40px;"> FIELDMAX
+            </h5>
+            <a href="#" class="active" onclick="showSection('dashboard')">Dashboard</a>
+            <a href="#" onclick="showSection('upload')">Upload Product</a>
+            <a href="#" onclick="showSection('sale')">Record Sale</a>
+            <a href="{{ url_for('logout') }}" class="text-danger">Logout</a>
+        </div>
 
         <!-- Main Content -->
-        <div class="col-md-10 content">
-            <h3 class="mb-4"><h2>{{ greeting }},👋</h2>
-            </h3>
+        <div class="col-md-10 main">
+            <div class="topbar">
+                <h2 class="m-0">{{ greeting }}, 👋</h2>
+            </div>
 
             <!-- Dashboard Section -->
-            <div id="dashboard">
+            <div id="dashboard" class="p-4">
                 <div class="row">
                     <div class="col-md-4">
                         <div class="card text-center">
@@ -109,59 +109,48 @@
             </div>
 
             <!-- Upload Product Section -->
-            <div id="upload" style="display: none">
+            <div id="upload" style="display: none" class="p-4">
                 <div class="card p-4">
                     <h5>Upload Product</h5>
                     <form method="POST" action="/upload-product">
-    <div class="mb-3">
-        <label>Item Code</label>
-        <input type="text" name="code" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label>Item Name</label>
-        <input type="text" name="name" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label>Buying Price</label>
-        <input type="number" name="buying" step="0.01" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label>Selling Price</label>
-        <input type="number" name="selling" step="0.01" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label>Quantity to Add</label>
-        <input type="number" name="added_stock" class="form-control" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Upload</button>
-</form>
+                        <div class="mb-3">
+                            <label>Item Code</label>
+                            <input type="text" name="code" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Item Name</label>
+                            <input type="text" name="name" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Buying Price</label>
+                            <input type="number" name="buying" step="0.01" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Selling Price</label>
+                            <input type="number" name="selling" step="0.01" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Quantity to Add</label>
+                            <input type="number" name="added_stock" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Upload</button>
+                    </form>
                 </div>
             </div>
 
             <!-- Record Sale Section -->
-            <div id="sale" style="display: none">
+            <div id="sale" style="display: none" class="p-4">
                 <div class="card p-4">
                     <h5>Record Sale</h5>
                     <form method="POST" action="/record-sale">
                         <div class="mb-3">
                             <label>Item Code</label>
                             <input type="text" name="item_code" id="item_code" class="form-control" onblur="fetchProduct()" required>
-                        </div> 
+                        </div>
                         <div class="mb-3">
                             <label>Item Name</label>
                             <input type="text" id="item_name" name="item_name" class="form-control" readonly>
                         </div>
-                        <!--
-                        <div class="mb-3">
-                            <label>Buying Price</label>
-                            <input type="hidden" id="buying_price" name="buying_price" class="form-control" readonly>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label>Current Stock</label>
-                            <input type="number" id="in_stock" name="in_stock" class="form-control" readonly>
-                        </div>
-                        -->
                         <div class="mb-3">
                             <label>Sale Price</label>
                             <input type="number" name="sale_price" step="0.01" class="form-control" required>
