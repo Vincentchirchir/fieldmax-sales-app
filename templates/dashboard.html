@@ -135,7 +135,10 @@
         <!-- Sidebar -->
         <div class="col-md-2 sidebar">
             <h5 class="text-white text-center mb-4">
-                <img src="{{ url_for('static', filename='images/fieldmax_logo/fieldmax_icon.png') }}" alt="Fieldmax Logo" style="height: 40px;"> FIELDMAX
+                <!--<img src="{{ url_for('static', filename='images/fieldmax_logo/fieldmax_icon.png') }}" alt="Fieldmax Logo" style="height: 40px;"> FIELDMAX-->
+                <a href="{{ url_for('home') }}">
+                    <img src="{{ url_for('static', filename='images/fieldmax_logo/fieldmax_icon.png') }}" alt="Fieldmax Logo" style="height: 40px;"> FIELDMAX
+                </a>
             </h5>
             <a href="#" class="active" onclick="showSection('dashboard')">Dashboard</a>
             <a href="#" onclick="showSection('upload')">Upload Product</a>
