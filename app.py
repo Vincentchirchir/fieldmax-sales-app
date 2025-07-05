@@ -205,20 +205,80 @@ def dashboard():
         return redirect(url_for('login'))
 
     cursor = conn.cursor()
+
+    # --- Total products
     cursor.execute("SELECT COUNT(*) FROM products")
     total_products = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM sales")
-    total_sales = cursor.fetchone()[0]
+    # --- Sales and profits breakdown
+    timeframes = {
+        'daily': "CURRENT_DATE",
+        'weekly': "CURRENT_DATE - INTERVAL '7 days'",
+        'monthly': "CURRENT_DATE - INTERVAL '30 days'"
+    }
 
-    cursor.execute("SELECT SUM(profit) FROM sales")
-    total_profit = cursor.fetchone()[0] or 0
+    sales_data = {}
+    for key, condition in timeframes.items():
+        cursor.execute(f"""
+            SELECT 
+                COALESCE(SUM(quantity), 0), 
+                COALESCE(SUM(profit), 0)
+            FROM sales 
+            WHERE sale_date >= {condition}
+        """)
+        quantity, profit = cursor.fetchone()
+        sales_data[f"{key}_sales"] = quantity
+        sales_data[f"{key}_profit"] = profit
+
+    # --- All-time stats
+    cursor.execute("SELECT COALESCE(SUM(quantity), 0), COALESCE(SUM(profit), 0) FROM sales")
+    all_sales, all_profit = cursor.fetchone()
+
+    # --- Latest 5 sales
+    cursor.execute("""
+        SELECT item_code, item_name, quantity, sale_price, profit, sale_date
+        FROM sales 
+        ORDER BY sale_date DESC 
+        LIMIT 5
+    """)
+    latest_sales = cursor.fetchall()
+
+    # --- Top 5 selling items
+    cursor.execute("""
+        SELECT item_name, SUM(quantity) AS total_quantity
+        FROM sales 
+        GROUP BY item_name 
+        ORDER BY total_quantity DESC 
+        LIMIT 5
+    """)
+    top_selling_items = cursor.fetchall()
+
+    # --- Stock warnings (<= 5 in_stock)
+    cursor.execute("""
+        SELECT item_code, item_name, in_stock 
+        FROM products 
+        WHERE in_stock <= 5
+    """)
+    low_stock_items = cursor.fetchall()
 
     greeting = get_greeting()
 
-    return render_template("dashboard.html", total_products=total_products,
-                           total_sales=total_sales, total_profit=total_profit,
-                           greeting=greeting)
+    return render_template(
+        "dashboard.html",
+        greeting=greeting,
+        total_products=total_products,
+        total_sales=all_sales,
+        total_profit=all_profit,
+        daily_sales=sales_data['daily_sales'],
+        weekly_sales=sales_data['weekly_sales'],
+        monthly_sales=sales_data['monthly_sales'],
+        daily_profit=sales_data['daily_profit'],
+        weekly_profit=sales_data['weekly_profit'],
+        monthly_profit=sales_data['monthly_profit'],
+        latest_sales=latest_sales,
+        top_selling_items=top_selling_items,
+        low_stock_items=low_stock_items
+    )
 
 @app.route('/')
 def home():
