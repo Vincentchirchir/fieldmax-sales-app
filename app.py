@@ -3,6 +3,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import re
 
 def get_greeting():
     hour = datetime.now().hour
