@@ -29,28 +29,56 @@ cursor = conn.cursor()
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        email = request.form['email'].strip().lower()
-        password = request.form['password'].strip()
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        phone = request.form['phone']
+        email = request.form['email']
+        password = request.form['password']
 
-        # Check if email already exists
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        existing_user = cursor.fetchone()
-        if existing_user:
-            flash("Email already in use", "warning")
+        # Password validation
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'danger')
+            return redirect(url_for('register'))
+        if not re.search(r'[A-Z]', password):
+            flash('Password must contain at least one uppercase letter.', 'danger')
+            return redirect(url_for('register'))
+        if not re.search(r'[a-z]', password):
+            flash('Password must contain at least one lowercase letter.', 'danger')
+            return redirect(url_for('register'))
+        if not re.search(r'\d', password):
+            flash('Password must include at least one number.', 'danger')
+            return redirect(url_for('register'))
+        if not re.search(r'[^\w\s]', password):  # special characters
+            flash('Password must include at least one special character.', 'danger')
             return redirect(url_for('register'))
 
         # Hash the password
-        hashed_password = generate_password_hash(password)
+        password_hash = generate_password_hash(password)
 
-        # Save user to database
-        cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", 
-                       (email, hashed_password))
+        cur = conn.cursor()
+
+        # Check for existing user by email or phone
+        cur.execute("SELECT * FROM users WHERE email = %s OR phone = %s", (email, phone))
+        existing_user = cur.fetchone()
+
+        if existing_user:
+            flash('Email or phone number already registered.', 'danger')
+            cur.close()
+            return redirect(url_for('register'))
+
+        # Insert user
+        cur.execute("""
+            INSERT INTO users (first_name, last_name, phone, email, password)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (first_name, last_name, phone, email, password))
+
         conn.commit()
+        cur.close()
 
-        flash("Registration successful! Please log in.", "success")
+        flash('Registration successful. You can now log in.', 'success')
         return redirect(url_for('login'))
 
-    return render_template('register.html', datetime=datetime)
+    return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
