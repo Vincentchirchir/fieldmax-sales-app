@@ -37,6 +37,7 @@
       color: #90caf9;
     }
 
+    input[type="text"],
     input[type="email"],
     input[type="password"] {
       width: 100%;
@@ -131,26 +132,42 @@
   <h2>FIELDMAX REGISTER</h2>
 
   <form action="/register" method="POST">
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}">
-            {{ message }}
-            <button type="button" class="btn-close" onclick="this.parentElement.style.display='none';">&times;</button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">
+          {{ message }}
+          <button type="button" class="btn-close" onclick="this.parentElement.style.display='none';">&times;</button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
 
-    <label for="email">Email</label>
-    <input type="email" name="email" placeholder="Enter your email" required>
+  <label for="first_name">First Name</label>
+  <input type="text" name="first_name" placeholder="Enter your first name" required>
 
-    <label for="password">Password</label>
-    <input type="password" name="password" placeholder="Create a password" required>
+  <label for="last_name">Last Name</label>
+  <input type="text" name="last_name" placeholder="Enter your last name" required>
 
-    <button type="submit">Register</button>
-  </form>
+  <label for="phone">Phone Number</label>
+  <input type="text" name="phone" placeholder="Enter your phone number" required>
+
+  <label for="email">Email</label>
+  <input type="email" name="email" placeholder="Enter your email" required>
+
+  <label for="password">Password</label>
+  <input type="password" name="password" placeholder="Create a password" required>
+
+  <small style="color: #ccc; font-size: 0.8rem; display: block; margin-top: 8px; margin-bottom: 15px;">
+    Password must be at least 6 characters long, and include:
+    an uppercase letter, a lowercase letter, a number, and a special character.
+  </small>
+
+
+
+  <button type="submit">Register</button>
+</form>
 
   <div class="login-link">
     Already have an account? <a href="{{ url_for('login') }}">Login</a>
