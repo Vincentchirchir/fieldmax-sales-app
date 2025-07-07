@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Register | Fieldmax</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body {
       background-color: #121212;
@@ -52,6 +53,19 @@
     input:focus {
       border-color: #42a5f5;
       outline: none;
+    }
+
+    .input-group {
+      position: relative;
+    }
+
+    .input-group i {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #ccc;
     }
 
     button {
@@ -131,43 +145,50 @@
 
   <h2>FIELDMAX REGISTER</h2>
 
-  <form action="/register" method="POST">
-  <!-- Flash Messages -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="alert alert-{{ category }}">
-          {{ message }}
-          <button type="button" class="btn-close" onclick="this.parentElement.style.display='none';">&times;</button>
-        </div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
+  <form action="/register" method="POST" onsubmit="return validatePasswords()">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            {{ message }}
+            <button type="button" class="btn-close" onclick="this.parentElement.style.display='none';">&times;</button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-  <label for="first_name">First Name</label>
-  <input type="text" name="first_name" placeholder="Enter your first name" required>
+    <label for="first_name">First Name</label>
+    <input type="text" name="first_name" placeholder="Enter your first name" required>
 
-  <label for="last_name">Last Name</label>
-  <input type="text" name="last_name" placeholder="Enter your last name" required>
+    <label for="last_name">Last Name</label>
+    <input type="text" name="last_name" placeholder="Enter your last name" required>
 
-  <label for="phone">Phone Number</label>
-  <input type="text" name="phone" placeholder="Enter your phone number" required>
+    <label for="phone">Phone Number</label>
+    <input type="text" name="phone" placeholder="Enter your phone number" required>
 
-  <label for="email">Email</label>
-  <input type="email" name="email" placeholder="Enter your email" required>
+    <label for="email">Email</label>
+    <input type="email" name="email" placeholder="Enter your email" required>
 
-  <label for="password">Password</label>
-  <input type="password" name="password" placeholder="Create a password" required>
+    <label for="password">Password</label>
+    <div class="input-group">
+      <input type="password" name="password" id="password" placeholder="Create a password" required>
+      <i class="fa fa-eye" onclick="toggleVisibility('password')"></i>
+    </div>
 
-  <small style="color: #ccc; font-size: 0.8rem; display: block; margin-top: 8px; margin-bottom: 15px;">
-    Password must be at least 6 characters long, and include:
-    an uppercase letter, a lowercase letter, a number, and a special character.
-  </small>
+    <label for="confirm_password">Confirm Password</label>
+    <div class="input-group">
+      <input type="password" name="confirm_password" id="confirm_password" placeholder="Re-enter password" required>
+      <i class="fa fa-eye" onclick="toggleVisibility('confirm_password')"></i>
+    </div>
 
+    <small style="color: #ccc; font-size: 0.8rem; display: block; margin-top: 8px; margin-bottom: 15px;">
+      Password must be at least 6 characters long, and include:
+      an uppercase letter, a lowercase letter, a number, and a special character.
+    </small>
 
-
-  <button type="submit">Register</button>
-</form>
+    <button type="submit">Register</button>
+  </form>
 
   <div class="login-link">
     Already have an account? <a href="{{ url_for('login') }}">Login</a>
@@ -177,6 +198,23 @@
     © {{ datetime.utcnow().year }} Fieldmax Shop. All rights reserved.
   </footer>
 </div>
+
+<script>
+function toggleVisibility(id) {
+  const field = document.getElementById(id);
+  field.type = field.type === "password" ? "text" : "password";
+}
+
+function validatePasswords() {
+  const pw = document.getElementById('password').value;
+  const confirm = document.getElementById('confirm_password').value;
+  if (pw !== confirm) {
+    alert("Passwords do not match.");
+    return false;
+  }
+  return true;
+}
+</script>
 
 </body>
 </html>
