@@ -35,30 +35,21 @@ def register():
         phone = request.form['phone']
         email = request.form['email']
         password = request.form['password']
+        confirm_password = request.form['confirm_password']  # ✅ New line
 
-        # Password validation
-        if len(password) < 6:
-            flash('Password must be at least 6 characters long.', 'danger')
-            return redirect(url_for('register'))
-        if not re.search(r'[A-Z]', password):
-            flash('Password must contain at least one uppercase letter.', 'danger')
-            return redirect(url_for('register'))
-        if not re.search(r'[a-z]', password):
-            flash('Password must contain at least one lowercase letter.', 'danger')
-            return redirect(url_for('register'))
-        if not re.search(r'\d', password):
-            flash('Password must include at least one number.', 'danger')
-            return redirect(url_for('register'))
-        if not re.search(r'[^\w\s]', password):  # special characters
-            flash('Password must include at least one special character.', 'danger')
+        # ✅ Check if password and confirm match
+        if password != confirm_password:
+            flash('Passwords do not match.', 'danger')
             return redirect(url_for('register'))
 
-        # Hash the password
+        # Password strength validation
+        if len(password) < 6 or not re.search(r'[A-Z]', password) or not re.search(r'[a-z]', password) or not re.search(r'\d', password) or not re.search(r'[^\w\s]', password):
+            flash('Password must meet all requirements.', 'danger')
+            return redirect(url_for('register'))
+
         password_hash = generate_password_hash(password)
 
         cur = conn.cursor()
-
-        # Check for existing user by email or phone
         cur.execute("SELECT * FROM users WHERE email = %s OR phone = %s", (email, phone))
         existing_user = cur.fetchone()
 
@@ -67,12 +58,8 @@ def register():
             cur.close()
             return redirect(url_for('register'))
 
-        # Insert user
-        cur.execute("""
-            INSERT INTO users (first_name, last_name, phone, email, password_hash)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (first_name, last_name, phone, email, password_hash))
-
+        cur.execute("INSERT INTO users (first_name, last_name, phone, email, password) VALUES (%s, %s, %s, %s, %s)",
+                    (first_name, last_name, phone, email, password))
         conn.commit()
         cur.close()
 
