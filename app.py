@@ -35,36 +35,50 @@ def register():
         phone = request.form['phone']
         email = request.form['email']
         password = request.form['password']
-        confirm_password = request.form['confirm_password']  # ✅ New line
+        confirm_password = request.form['confirm_password']
 
-        # ✅ Check if password and confirm match
-        if password != confirm_password:
-            flash('Passwords do not match.', 'danger')
-            return redirect(url_for('register'))
+        try:
+            # ✅ Check if password and confirm match
+            if password != confirm_password:
+                flash('Passwords do not match.', 'danger')
+                return redirect(url_for('register'))
 
-        # Password strength validation
-        if len(password) < 6 or not re.search(r'[A-Z]', password) or not re.search(r'[a-z]', password) or not re.search(r'\d', password) or not re.search(r'[^\w\s]', password):
-            flash('Password must meet all requirements.', 'danger')
-            return redirect(url_for('register'))
+            # ✅ Password strength validation
+            if (
+                len(password) < 6 or
+                not re.search(r'[A-Z]', password) or
+                not re.search(r'[a-z]', password) or
+                not re.search(r'\d', password) or
+                not re.search(r'[^\w\s]', password)
+            ):
+                flash('Password must meet all requirements.', 'danger')
+                return redirect(url_for('register'))
 
-        password_hash = generate_password_hash(password)
+            password_hash = generate_password_hash(password)
 
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE email = %s OR phone = %s", (email, phone))
-        existing_user = cur.fetchone()
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM users WHERE email = %s OR phone = %s", (email, phone))
+            existing_user = cur.fetchone()
 
-        if existing_user:
-            flash('Email or phone number already registered.', 'danger')
+            if existing_user:
+                flash('Email or phone number already registered.', 'danger')
+                cur.close()
+                return redirect(url_for('register'))
+
+            cur.execute("""
+                INSERT INTO users (first_name, last_name, phone, email, password)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (first_name, last_name, phone, email, password_hash))  # ✅ Use hashed password
+            conn.commit()
             cur.close()
+
+            flash('Registration successful. You can now log in.', 'success')
+            return redirect(url_for('login'))
+
+        except Exception as e:
+            conn.rollback()  # 💥 Important if any failure occurs
+            flash("Registration error: " + str(e), "danger")
             return redirect(url_for('register'))
-
-        cur.execute("INSERT INTO users (first_name, last_name, phone, email, password) VALUES (%s, %s, %s, %s, %s)",
-                    (first_name, last_name, phone, email, password))
-        conn.commit()
-        cur.close()
-
-        flash('Registration successful. You can now log in.', 'success')
-        return redirect(url_for('login'))
 
     return render_template('register.html')
 
