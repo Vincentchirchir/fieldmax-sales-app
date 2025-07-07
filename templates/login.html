@@ -5,81 +5,117 @@
   <title>Login | Fieldmax</title>
   <style>
     body {
-        background-color: #121212;
-        color: #e0e0e0;
-        font-family: 'Segoe UI', sans-serif;
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', sans-serif;
     }
 
     .login-container {
-        max-width: 400px;
-        margin: 8% auto 3%;
-        background-color: #1f1f1f;
-        padding: 2rem;
-        border-radius: 10px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-        text-align: center;
+      max-width: 400px;
+      margin: 8% auto 3%;
+      background-color: #1f1f1f;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      text-align: center;
     }
 
     h2 {
-        color: #42a5f5;
-        margin-bottom: 1.2rem;
+      color: #42a5f5;
+      margin-bottom: 1.2rem;
     }
 
     input[type="email"],
     input[type="password"] {
-        width: 100%;
-        padding: 10px;
-        margin: 0.5rem 0 1rem;
-        background-color: #2a2a2a;
-        border: 1px solid #444;
-        border-radius: 5px;
-        color: #fff;
+      width: 100%;
+      padding: 10px;
+      margin: 0.5rem 0 1rem;
+      background-color: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 5px;
+      color: #fff;
     }
 
-    input[type="email"]:focus,
-    input[type="password"]:focus {
-        border-color: #42a5f5;
-        outline: none;
+    input:focus {
+      border-color: #42a5f5;
+      outline: none;
     }
 
     button {
-        background-color: #1e88e5;
-        color: #fff;
-        padding: 10px 15px;
-        width: 100%;
-        border: none;
-        border-radius: 5px;
-        font-weight: bold;
-        transition: background-color 0.3s;
+      background-color: #1e88e5;
+      color: #fff;
+      padding: 10px 15px;
+      width: 100%;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      transition: background-color 0.3s;
     }
 
     button:hover {
-        background-color: #1565c0;
+      background-color: #1565c0;
     }
 
     .register-link {
-        margin-top: 1rem;
-        font-size: 0.9rem;
+      margin-top: 1rem;
+      font-size: 0.9rem;
     }
 
     .register-link a {
-        color: #90caf9;
-        text-decoration: none;
+      color: #90caf9;
+      text-decoration: none;
     }
 
     .register-link a:hover {
-        text-decoration: underline;
+      text-decoration: underline;
     }
 
     footer {
-        margin-top: 2rem;
-        color: #aaa;
-        font-size: 0.85rem;
+      margin-top: 2rem;
+      color: #aaa;
+      font-size: 0.85rem;
     }
 
     .logo-img {
-        height: 50px;
-        margin-bottom: 1rem;
+      height: 50px;
+      margin-bottom: 1rem;
+    }
+
+    .password-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-wrapper input {
+      flex: 1;
+    }
+
+    .toggle-password {
+      position: absolute;
+      right: 10px;
+      cursor: pointer;
+      color: #aaa;
+    }
+
+    .alert {
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 14px;
+      border-radius: 5px;
+    }
+
+    .alert-success { background-color: #1b5e20; color: #a5d6a7; }
+    .alert-danger { background-color: #b71c1c; color: #ef9a9a; }
+    .alert-warning { background-color: #f9a825; color: #fff; }
+
+    .btn-close {
+      float: right;
+      font-weight: bold;
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -107,19 +143,29 @@
     <input type="email" name="email" placeholder="Enter email" required>
 
     <label for="password">Password</label>
-    <input type="password" name="password" placeholder="Enter password" required>
+    <div class="password-wrapper">
+      <input type="password" name="password" id="password" placeholder="Enter password" required>
+      <span class="toggle-password" onclick="togglePassword()">👁️</span>
+    </div>
 
     <button type="submit">Login</button>
   </form>
 
   <div class="register-link">
-      Don’t have an account? <a href="{{ url_for('register') }}">Register</a>
+    Don’t have an account? <a href="{{ url_for('register') }}">Register</a>
   </div>
 
   <footer>
-      © {{ datetime.utcnow().year }} Fieldmax Shop. All rights reserved.
+    © {{ datetime.utcnow().year }} Fieldmax Shop. All rights reserved.
   </footer>
 </div>
+
+<script>
+  function togglePassword() {
+    const field = document.getElementById("password");
+    field.type = field.type === "password" ? "text" : "password";
+  }
+</script>
 
 </body>
 </html>
