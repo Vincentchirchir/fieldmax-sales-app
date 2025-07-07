@@ -74,16 +74,21 @@ def login():
         email = request.form['email'].strip().lower()
         password = request.form['password'].strip()
 
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        user = cursor.fetchone()
+        try:
+            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
 
-        if user and check_password_hash(user[2], password):  # Assuming password is column index 2
-            session['user_id'] = user[0]
-            session['email'] = user[1]
-            flash("Login successful", "success")
-            return redirect(url_for('dashboard'))
-        else:
-            flash("Invalid email or password", "danger")
+            if user and check_password_hash(user[2], password):  # Adjust index if password is not at index 2
+                session['user_id'] = user[0]
+                session['email'] = user[1]
+                flash("Login successful", "success")
+                return redirect(url_for('dashboard'))
+            else:
+                flash("Invalid email or password", "danger")
+
+        except Exception as e:
+            conn.rollback()  # 💥 Critical to prevent transaction lock
+            flash("Login error: " + str(e), "danger")
 
     return render_template('login.html', datetime=datetime)
 
