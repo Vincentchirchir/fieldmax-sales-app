@@ -69,9 +69,9 @@ def register():
 
         # Insert user
         cur.execute("""
-            INSERT INTO users (first_name, last_name, phone, email, password_harsh)
+            INSERT INTO users (first_name, last_name, phone, email, password_hash)
             VALUES (%s, %s, %s, %s, %s)
-        """, (first_name, last_name, phone, email, password_harsh))
+        """, (first_name, last_name, phone, email, password_hash))
 
         conn.commit()
         cur.close()
