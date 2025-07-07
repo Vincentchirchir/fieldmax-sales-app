@@ -66,7 +66,7 @@ def register():
                 return redirect(url_for('register'))
 
             cur.execute("""
-                INSERT INTO users (first_name, last_name, phone, email, password)
+                INSERT INTO users (first_name, last_name, phone, email, password_hash)
                 VALUES (%s, %s, %s, %s, %s)
             """, (first_name, last_name, phone, email, password_hash))  # ✅ Use hashed password
             conn.commit()
