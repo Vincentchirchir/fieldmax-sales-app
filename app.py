@@ -11,16 +11,23 @@ import os
 # UPLOAD_FOLDER = 'static/profile_pics'
 # os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # ✅ Ensure it exists before uploads
 
+import pytz
+from datetime import datetime
+
 def get_greeting(name=None):
-    hour = datetime.now().hour
+    kenya_time = datetime.now(pytz.timezone("Africa/Nairobi"))
+    hour = kenya_time.hour
+    day_name = kenya_time.strftime("%A")  # e.g., Monday, Tuesday...
+
     if hour < 12:
-        greeting = "Good morning"
-    elif hour < 18:
-        greeting = "Good afternoon"
+        greeting = "Good Morning"
+    elif hour < 17:
+        greeting = "Good Afternoon"
     else:
-        greeting = "Good evening"
-    
-    return f"{greeting}, {name}" if name else greeting
+        greeting = "Good Evening"
+
+    base = f"{greeting}, {name}" if name else greeting
+    return f"{base} – Happy {day_name}!"
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
