@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stock Warnings | Fieldmax</title>
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-white">
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar bg-dark vh-100">
+                <h5 class="text-white text-center my-4">
+                    <a href="{{ url_for('home') }}">
+                        <img src="{{ url_for('static', filename='images/fieldmax_logo/fieldmax_icon.png') }}" alt="Fieldmax Logo" height="40">
+                    </a> FIELDMAX
+                </h5>
+                <ul class="nav flex-column px-3">
+                    <li class="nav-item"><a class="nav-link text-white" href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="{{ url_for('stock_warnings') }}">Stock Warnings</a></li>
+                    <li class="nav-item"><a class="nav-link text-danger" href="{{ url_for('logout') }}">Logout</a></li>
+                </ul>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-10 p-4">
+                <!-- Greeting -->
+                <div class="bg-primary text-white p-4 rounded mb-4 d-flex justify-content-between align-items-center">
+                    <h2 class="fw-bold mb-0">{{ greeting }} 👋</h2>
+                    <div class="d-flex align-items-center">
+                        <div class="avatar-circle bg-dark text-white rounded-circle d-flex justify-content-center align-items-center" style="width: 40px; height: 40px;">
+                            {{ user_first_name[0]|upper }}{{ user_last_name[0]|upper }}
+                        </div>
+                        <span class="ms-2 fw-semibold text-uppercase">{{ user_first_name }}</span>
+                    </div>
+                </div>
+
+                <!-- Stock Warning Section -->
+                <div class="card bg-black text-white mb-4">
+                    <div class="card-header bg-danger text-white fw-bold">
+                        Stock Warnings (≤ 5)
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-bordered table-striped mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Item Code</th>
+                                    <th>Item Name</th>
+                                    <th>Stock Left</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in low_stock_items %}
+                                    <tr class="bg-danger-subtle text-dark">
+                                        <td>{{ item[0] }}</td>
+                                        <td>{{ item[1] }}</td>
+                                        <td>{{ item[2] }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center">No low-stock items</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
