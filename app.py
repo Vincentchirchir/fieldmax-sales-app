@@ -4,18 +4,34 @@ from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import re
+import os
+from werkzeug.utils import secure_filename
+import os
 
-def get_greeting():
+# UPLOAD_FOLDER = 'static/profile_pics'
+# os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # ✅ Ensure it exists before uploads
+
+def get_greeting(name=None):
     hour = datetime.now().hour
-    if hour < 18:
-        return "Good morning"
-    elif hour < 12:
-        return "Good afternoon"
+    if hour < 12:
+        greeting = "Good morning"
+    elif hour < 18:
+        greeting = "Good afternoon"
     else:
-        return "Good evening"
+        greeting = "Good evening"
+    
+    return f"{greeting}, {name}" if name else greeting
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
+
+UPLOAD_FOLDER = 'static/profile_pics'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # PostgreSQL connection setup
 conn = psycopg2.connect(
@@ -240,7 +256,19 @@ def dashboard():
         flash("Please log in to continue.", "warning")
         return redirect(url_for('login'))
 
+    user_id = session['user_id']
     cursor = conn.cursor()
+
+    # 👤 Fetch user info for profile icon
+    cursor.execute("SELECT first_name, last_name, email, phone, profile_image FROM users WHERE id = %s", (user_id,))
+    user = cursor.fetchone()
+
+    if user:
+        user_first_name = user[0]
+        user_last_name = user[1]
+    else:
+        user_first_name = "User"
+        user_last_name = ""
 
     # --- Total products
     cursor.execute("SELECT COUNT(*) FROM products")
@@ -289,7 +317,7 @@ def dashboard():
     """)
     top_selling_items = cursor.fetchall()
 
-    # --- Stock warnings (<= 5 in_stock)
+    # --- Low stock items
     cursor.execute("""
         SELECT item_code, item_name, in_stock 
         FROM products 
@@ -297,25 +325,121 @@ def dashboard():
     """)
     low_stock_items = cursor.fetchall()
 
-    greeting = get_greeting()
+    greeting = get_greeting()  # user[0] = first_name
 
     return render_template(
-    "dashboard.html",
-    greeting=greeting,
-    total_products=total_products,
-    total_sales=all_sales,
-    total_profit=all_profit,
-    daily_sales=sales_data['daily_sales'],
-    weekly_sales=sales_data['weekly_sales'],
-    monthly_sales=sales_data['monthly_sales'],
-    daily_profit=sales_data['daily_profit'],
-    weekly_profit=sales_data['weekly_profit'],
-    monthly_profit=sales_data['monthly_profit'],
-    latest_sales=latest_sales,
-    top_selling_items=top_selling_items,
-    low_stock_items=low_stock_items,
-    datetime=datetime
-)
+        "dashboard.html", 
+        user_first_name=user_first_name,
+        user_last_name=user_last_name,
+        greeting=greeting,
+        user=user,  # ✅ this is now passed into the template
+        total_products=total_products,
+        total_sales=all_sales,
+        total_profit=all_profit,
+        daily_sales=sales_data['daily_sales'],
+        weekly_sales=sales_data['weekly_sales'],
+        monthly_sales=sales_data['monthly_sales'],
+        daily_profit=sales_data['daily_profit'],
+        weekly_profit=sales_data['weekly_profit'],
+        monthly_profit=sales_data['monthly_profit'],
+        latest_sales=latest_sales,
+        top_selling_items=top_selling_items,
+        low_stock_items=low_stock_items,
+        datetime=datetime
+    )
+
+@app.route('/profile', methods=['GET', 'POST'])
+def profile():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        # Form values
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        phone = request.form['phone']
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        # --- Profile Image Upload ---
+        image_file = request.files.get('profile_image')
+        image_path = None
+
+        if image_file and allowed_file(image_file.filename):
+            filename = secure_filename(f"user_{user_id}_{image_file.filename}")
+            save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            image_file.save(save_path)
+            image_path = f"profile_pics/{filename}"
+
+        # --- Update profile info ---
+        if image_path:
+            cur.execute("""
+                UPDATE users SET first_name=%s, last_name=%s, phone=%s, profile_image=%s WHERE id=%s
+            """, (first_name, last_name, phone, image_path, user_id))
+        else:
+            cur.execute("""
+                UPDATE users SET first_name=%s, last_name=%s, phone=%s WHERE id=%s
+            """, (first_name, last_name, phone, user_id))
+
+        # --- Password Update ---
+        if current_password and new_password and confirm_password:
+            cur.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
+            user_pass = cur.fetchone()[0]
+
+            if not check_password_hash(user_pass, current_password):
+                flash("Current password is incorrect.", "danger")
+                return redirect(url_for('profile'))
+
+            if new_password != confirm_password:
+                flash("New passwords do not match.", "danger")
+                return redirect(url_for('profile'))
+
+            if len(new_password) < 6:
+                flash("New password must be at least 6 characters.", "danger")
+                return redirect(url_for('profile'))
+
+            new_hash = generate_password_hash(new_password)
+            cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_hash, user_id))
+
+        conn.commit()
+        flash("Profile updated successfully", "success")
+        return redirect(url_for('profile'))
+
+    # --- Get user info ---
+    cur.execute("SELECT first_name, last_name, phone, email, profile_image FROM users WHERE id=%s", (user_id,))
+    user = cur.fetchone()
+
+    return render_template("profile.html", user=user)
+
+@app.route('/stock-warnings')
+def stock_warnings():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    cur = conn.cursor()
+
+    cur.execute("SELECT first_name, last_name FROM users WHERE id = %s", (user_id,))
+    user = cur.fetchone()
+    user_first_name, user_last_name = user if user else ("User", "")
+
+    cur.execute("SELECT item_code, item_name, in_stock FROM products WHERE in_stock <= 5")
+    low_stock_items = cur.fetchall()
+
+    greeting = get_greeting(user_first_name)
+
+    return render_template(
+        "stock_warnings.html",
+        user_first_name=user_first_name,
+        user_last_name=user_last_name,
+        greeting=greeting,
+        low_stock_items=low_stock_items
+    )
+
 
 @app.route('/')
 def home():
