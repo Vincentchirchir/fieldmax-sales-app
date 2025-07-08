@@ -27,7 +27,7 @@ def get_greeting(name=None):
         greeting = "Good Evening"
 
     base = f"{greeting}, {name}" if name else greeting
-    return f"{base} – Happy {day_name}!"
+    return f"{base} – Happy {day_name}"
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
