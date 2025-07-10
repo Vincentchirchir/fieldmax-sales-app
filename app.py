@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 import os
 from werkzeug.utils import secure_filename
@@ -10,6 +10,9 @@ import os
 
 # UPLOAD_FOLDER = 'static/profile_pics'
 # os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # ✅ Ensure it exists before uploads
+
+import pytz
+from datetime import datetime
 
 import pytz
 from datetime import datetime
@@ -27,7 +30,8 @@ def get_greeting(name=None):
         greeting = "Good Evening"
 
     base = f"{greeting}, {name}" if name else greeting
-    return f"{base} – Happy {day_name}"
+    return f"{base} – Happy {day_name}!"
+
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -137,104 +141,136 @@ def logout():
 
 @app.route('/upload-product', methods=['POST'])
 def upload_product():
+    # ✅ Ensure only logged-in users can access this route
     if 'user_id' not in session:
         flash("Login required", "warning")
         return redirect(url_for('login'))
 
-    code = request.form['code'].strip()
-    name = request.form['name'].strip()
-    buying = float(request.form['buying'])
-    selling = float(request.form['selling'])
-    added_stock = int(request.form['added_stock'])
+    try:
+        # ✅ Get form inputs
+        code = request.form['code'].strip()
+        name = request.form['name'].strip()
+        buying = float(request.form['buying'])
+        selling = float(request.form['selling'])
+        added_stock = int(request.form['added_stock'])
 
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM products WHERE item_code = %s", (code,))
-    existing = cursor.fetchone()
+        # ✅ Get current time in Kenya for FIFO batch tracking
+        kenya_time = datetime.now(pytz.timezone("Africa/Nairobi"))
 
-    if existing:
+        # ✅ Check if product already exists
+        cursor.execute("SELECT * FROM products WHERE item_code = %s", (code,))
+        existing = cursor.fetchone()
+
+        if existing:
+            # ✅ If product exists, update stock
+            cursor.execute("""
+                UPDATE products
+                SET item_name = %s,
+                    all_stock = all_stock + %s,
+                    in_stock = in_stock + %s
+                WHERE item_code = %s
+            """, (name, added_stock, added_stock, code))
+        else:
+            # ✅ If new product, insert it into products table
+            cursor.execute("""
+                INSERT INTO products (item_code, item_name, buying_price, selling_price, all_stock, in_stock)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (code, name, buying, selling, added_stock, added_stock))
+
+        # ✅ Record batch-wise stock for FIFO using Kenya time
         cursor.execute("""
-            UPDATE products
-            SET item_name = %s,
-                all_stock = all_stock + %s,
-                in_stock = in_stock + %s
-            WHERE item_code = %s
-        """, (name, added_stock, added_stock, code))
-    else:
-        cursor.execute("""
-            INSERT INTO products (item_code, item_name, buying_price, selling_price, all_stock, in_stock)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (code, name, buying, selling, added_stock, added_stock))
+            INSERT INTO stock_entries (item_code, buying_price, quantity, remaining_quantity, date_received)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (code, buying, added_stock, added_stock, kenya_time))
 
-    cursor.execute("""
-        INSERT INTO stock_entries (item_code, buying_price, quantity, remaining_quantity)
-        VALUES (%s, %s, %s, %s)
-    """, (code, buying, added_stock, added_stock))
+        # ✅ Commit all database operations
+        conn.commit()
+        flash("Product uploaded and stock batch recorded", "success")
 
-    conn.commit()
-    flash("Product uploaded and stock batch recorded", "success")
-    return redirect(url_for('dashboard'))
+    except Exception as e:
+        # 💥 Rollback in case of any failure
+        conn.rollback()
+        flash(f"Upload error: {str(e)}", "danger")
+
+    finally:
+        # ✅ Always redirect back to dashboard
+        return redirect(url_for('dashboard'))
     
 
 @app.route('/record-sale', methods=['POST'])
 def record_sale():
+    # ✅ Ensure the user is logged in
     if 'user_id' not in session:
         flash("Login required", "warning")
         return redirect(url_for('login'))
 
-    item_code = request.form['item_code'].strip()
-    sale_price = float(request.form['sale_price'])
-    quantity_to_sell = int(request.form['quantity'])
+    try:
+        # ✅ Extract form data
+        item_code = request.form['item_code'].strip()
+        sale_price = float(request.form['sale_price'])
+        quantity_to_sell = int(request.form['quantity'])
 
-    cursor = conn.cursor()
+        # ✅ Kenyan timezone timestamp
+        kenya_time = datetime.now(pytz.timezone("Africa/Nairobi"))
 
-    # Get item name
-    cursor.execute("SELECT item_name FROM products WHERE item_code = %s", (item_code,))
-    result = cursor.fetchone()
-    item_name = result[0] if result else "Unknown"
+        # ✅ Get item name from products table
+        cursor.execute("SELECT item_name FROM products WHERE item_code = %s", (item_code,))
+        result = cursor.fetchone()
+        item_name = result[0] if result else "Unknown"
 
-    # Get FIFO batches
-    cursor.execute("""
-        SELECT id, buying_price, remaining_quantity
-        FROM stock_entries
-        WHERE item_code = %s AND remaining_quantity > 0
-        ORDER BY date_received ASC
-    """, (item_code,))
-    stock_batches = cursor.fetchall()
-
-    sold = 0
-    for batch in stock_batches:
-        if sold >= quantity_to_sell:
-            break
-
-        stock_id, buying_price, available_qty = batch
-        to_sell = min(quantity_to_sell - sold, available_qty)
-        profit = (sale_price - float(buying_price)) * to_sell
-
-        # Record sale
+        # ✅ Get available stock batches (FIFO order)
         cursor.execute("""
-            INSERT INTO sales (item_code, item_name, sale_price, buying_price, profit, quantity)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (item_code, item_name, sale_price, buying_price, profit, to_sell))
+            SELECT id, buying_price, remaining_quantity
+            FROM stock_entries
+            WHERE item_code = %s AND remaining_quantity > 0
+            ORDER BY date_received ASC
+        """, (item_code,))
+        stock_batches = cursor.fetchall()
 
-        # Update remaining quantity in batch
+        sold = 0  # ✅ Counter to track how many items sold
+
+        for batch in stock_batches:
+            if sold >= quantity_to_sell:
+                break  # ✅ Stop once desired quantity is sold
+
+            stock_id, buying_price, available_qty = batch
+            to_sell = min(quantity_to_sell - sold, available_qty)
+            profit = (sale_price - float(buying_price)) * to_sell
+
+            # ✅ Insert individual sale into sales table
+            cursor.execute("""
+                INSERT INTO sales (item_code, item_name, sale_price, buying_price, profit, quantity, sale_date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (item_code, item_name, sale_price, buying_price, profit, to_sell, kenya_time))
+
+            # ✅ Update the remaining quantity in the batch
+            cursor.execute("""
+                UPDATE stock_entries
+                SET remaining_quantity = remaining_quantity - %s
+                WHERE id = %s
+            """, (to_sell, stock_id))
+
+            sold += to_sell  # ✅ Increment sold counter
+
+        # ✅ Update total stock in products table
         cursor.execute("""
-            UPDATE stock_entries
-            SET remaining_quantity = remaining_quantity - %s
-            WHERE id = %s
-        """, (to_sell, stock_id))
+            UPDATE products
+            SET in_stock = in_stock - %s
+            WHERE item_code = %s
+        """, (quantity_to_sell, item_code))
 
-        sold += to_sell
+        conn.commit()
+        flash(f"{quantity_to_sell} items of {item_name} sold using FIFO", "success")
 
-    # Update main stock
-    cursor.execute("""
-        UPDATE products
-        SET in_stock = in_stock - %s
-        WHERE item_code = %s
-    """, (quantity_to_sell, item_code))
+    except Exception as e:
+        # 💥 Rollback if anything fails
+        conn.rollback()
+        flash("Sale error: " + str(e), "danger")
 
-    conn.commit()
-    flash(f"{quantity_to_sell} items of {item_name} sold using FIFO", "success")
-    return redirect(url_for('dashboard'))
+    finally:
+        # ✅ Always return to dashboard
+        return redirect(url_for('dashboard'))
+
 
 @app.route('/get-product/<item_code>')
 def get_product(item_code):
@@ -266,40 +302,47 @@ def dashboard():
     user_id = session['user_id']
     cursor = conn.cursor()
 
-    # 👤 Fetch user info for profile icon
+    # 👤 Fetch user info
     cursor.execute("SELECT first_name, last_name, email, phone, profile_image FROM users WHERE id = %s", (user_id,))
     user = cursor.fetchone()
-
-    if user:
-        user_first_name = user[0]
-        user_last_name = user[1]
-    else:
-        user_first_name = "User"
-        user_last_name = ""
+    user_first_name = user[0] if user else "User"
+    user_last_name = user[1] if user else ""
 
     # --- Total products
     cursor.execute("SELECT COUNT(*) FROM products")
     total_products = cursor.fetchone()[0]
 
-    # --- Sales and profits breakdown
-    timeframes = {
-        'daily': "CURRENT_DATE",
-        'weekly': "CURRENT_DATE - INTERVAL '7 days'",
-        'monthly': "CURRENT_DATE - INTERVAL '30 days'"
-    }
+    # --- Kenyan Time: Daily, Weekly (from Sunday), Monthly
+    tz = pytz.timezone("Africa/Nairobi")
+    now = datetime.now(tz)
+
+    midnight_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    weekday = midnight_today.weekday()  # Monday is 0
+    start_of_week = midnight_today - timedelta(days=(weekday + 1) % 7)  # Sunday is start of week
+    start_of_month = midnight_today.replace(day=1)
 
     sales_data = {}
-    for key, condition in timeframes.items():
-        cursor.execute(f"""
-            SELECT 
-                COALESCE(SUM(quantity), 0), 
-                COALESCE(SUM(profit), 0)
-            FROM sales 
-            WHERE sale_date >= {condition}
-        """)
-        quantity, profit = cursor.fetchone()
-        sales_data[f"{key}_sales"] = quantity
-        sales_data[f"{key}_profit"] = profit
+
+    # --- Daily
+    cursor.execute("""
+        SELECT COALESCE(SUM(quantity), 0), COALESCE(SUM(profit), 0)
+        FROM sales WHERE sale_date >= %s
+    """, (midnight_today,))
+    sales_data['daily_sales'], sales_data['daily_profit'] = cursor.fetchone()
+
+    # --- Weekly
+    cursor.execute("""
+        SELECT COALESCE(SUM(quantity), 0), COALESCE(SUM(profit), 0)
+        FROM sales WHERE sale_date >= %s
+    """, (start_of_week,))
+    sales_data['weekly_sales'], sales_data['weekly_profit'] = cursor.fetchone()
+
+    # --- Monthly
+    cursor.execute("""
+        SELECT COALESCE(SUM(quantity), 0), COALESCE(SUM(profit), 0)
+        FROM sales WHERE sale_date >= %s
+    """, (start_of_month,))
+    sales_data['monthly_sales'], sales_data['monthly_profit'] = cursor.fetchone()
 
     # --- All-time stats
     cursor.execute("SELECT COALESCE(SUM(quantity), 0), COALESCE(SUM(profit), 0) FROM sales")
@@ -308,38 +351,30 @@ def dashboard():
     # --- Latest 5 sales
     cursor.execute("""
         SELECT item_code, item_name, quantity, sale_price, profit, sale_date
-        FROM sales 
-        ORDER BY sale_date DESC 
-        LIMIT 5
+        FROM sales ORDER BY sale_date DESC LIMIT 5
     """)
     latest_sales = cursor.fetchall()
 
     # --- Top 5 selling items
     cursor.execute("""
         SELECT item_name, SUM(quantity) AS total_quantity
-        FROM sales 
-        GROUP BY item_name 
-        ORDER BY total_quantity DESC 
-        LIMIT 5
+        FROM sales GROUP BY item_name ORDER BY total_quantity DESC LIMIT 5
     """)
     top_selling_items = cursor.fetchall()
 
-    # --- Low stock items
-    cursor.execute("""
-        SELECT item_code, item_name, in_stock 
-        FROM products 
-        WHERE in_stock <= 5
-    """)
+    # --- Low stock
+    cursor.execute("SELECT item_code, item_name, in_stock FROM products WHERE in_stock <= 5")
     low_stock_items = cursor.fetchall()
 
-    greeting = get_greeting()  # user[0] = first_name
+    # --- Greeting
+    greeting = get_greeting(user_first_name)
 
     return render_template(
         "dashboard.html", 
         user_first_name=user_first_name,
         user_last_name=user_last_name,
         greeting=greeting,
-        user=user,  # ✅ this is now passed into the template
+        user=user,
         total_products=total_products,
         total_sales=all_sales,
         total_profit=all_profit,
@@ -354,6 +389,7 @@ def dashboard():
         low_stock_items=low_stock_items,
         datetime=datetime
     )
+
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
