@@ -24,7 +24,7 @@ def get_greeting(name=None):
 
     if hour < 12:
         greeting = "Good Morning"
-    elif hour < 17:
+    elif hour < 16:
         greeting = "Good Afternoon"
     else:
         greeting = "Good Evening"
@@ -365,6 +365,23 @@ def dashboard():
     # --- Low stock
     cursor.execute("SELECT item_code, item_name, in_stock FROM products WHERE in_stock <= 5")
     low_stock_items = cursor.fetchall()
+
+    # --- Latest uploaded products (based on stock_entries)
+    cursor.execute("""
+        SELECT 
+            p.item_code, 
+            p.item_name, 
+            p.buying_price, 
+            p.selling_price, 
+            p.in_stock,
+            s.quantity,
+            s.date_received
+        FROM stock_entries s
+        JOIN products p ON s.item_code = p.item_code
+        ORDER BY s.date_received DESC
+        LIMIT 10
+    """)
+    latest_products = cursor.fetchall()
 
     # --- Greeting
     greeting = get_greeting(user_first_name)
