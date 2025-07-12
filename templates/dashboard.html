@@ -297,6 +297,7 @@ label {
       <a href="#" onclick="showSection('upload')">Upload Product</a>
       <a href="#" onclick="showSection('sale')">Record Sale</a>
       <a class="nav-link" href="{{ url_for('stock_warnings') }}">Stock Warnings</a>
+      <a class="nav-link" href="{{ url_for('stock_level') }}">Stock Level</a>
       <a href="#" onclick="showSection('employee')">Employees</a>
       <a href="#" onclick="showSection('permission')">Permissions</a>
       <a href="#" onclick="showSection('role')">Roles</a>
@@ -450,10 +451,8 @@ label {
         </table>
     </div>
 -->
-</div>
-
-      <!-- Latest Uploaded Products -->
-<div class="table-section">
+  <!-- Latest Uploaded Products -->
+<div class="card p-3 mb-4">
   <h5>Latest Uploaded Products</h5>
   <table class="table table-striped table-hover">
     <thead>
@@ -487,6 +486,8 @@ label {
       {% endif %}
     </tbody>
   </table>
+</div>
+</div>
 </div>
 
             <!-- Upload Product Section -->
