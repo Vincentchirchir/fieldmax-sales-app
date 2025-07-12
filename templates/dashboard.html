@@ -489,35 +489,35 @@ label {
 </div>
 </div>
 
-            <!-- Upload Product Section -->
-            <div id="upload" style="display: none" class="p-4">
-                <div class="card p-4">
-                    <h5>Upload Product</h5>
-                    <form method="POST" action="/upload-product">
-                        <div class="mb-3">
-                            <label>Item Code</label>
-                            <input type="text" name="code" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label>Item Name</label>
-                            <input type="text" name="name" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label>Buying Price</label>
-                            <input type="number" name="buying" step="0.01" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label>Selling Price</label>
-                            <input type="number" name="selling" step="0.01" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label>Quantity to Add</label>
-                            <input type="number" name="added_stock" class="form-control" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Upload</button>
-                    </form>
-                </div>
-            </div>
+   <!-- Upload Product Section -->
+<div id="upload" style="display: none" class="p-4">
+  <div class="card p-4">
+    <h5>Upload Product</h5>
+    <form method="POST" action="/upload-product">
+      <div class="mb-3">
+        <label>Item Code</label>
+        <input type="text" name="code" id="upload_code" class="form-control" onblur="checkItemCode()" required>
+      </div>
+      <div class="mb-3">
+        <label>Item Name</label>
+        <input type="text" name="name" id="upload_name" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label>Buying Price</label>
+        <input type="number" name="buying" id="upload_buying" step="0.01" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label>Selling Price</label>
+        <input type="number" name="selling" id="upload_selling" step="0.01" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label>Quantity to Add</label>
+        <input type="number" name="added_stock" class="form-control" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Upload</button>
+    </form>
+  </div>
+</div>
 
             <!-- Record Sale Section -->
             <div id="sale" style="display: none" class="p-4">
@@ -574,6 +574,55 @@ label {
           document.getElementById("item_name").value = data.item_name;
           document.getElementById("buying_price").value = data.buying_price;
           document.getElementById("in_stock").value = data.in_stock;
+        }
+      });
+  }
+   function fetchUploadProduct() {
+  const code = document.getElementById("upload_item_code").value.trim();
+
+  fetch(`/get-product/${code}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.error) {
+        // New product
+        document.getElementById("upload_item_name").value = '';
+        document.getElementById("upload_item_name").readOnly = false;
+        document.getElementById("upload_buying_price").value = '';
+        document.getElementById("upload_selling_price").value = '';
+        document.getElementById("upload_quantity").value = '';
+      } else {
+        // Existing product
+        document.getElementById("upload_item_name").value = data.item_name;
+        document.getElementById("upload_item_name").readOnly = true;
+
+        document.getElementById("upload_buying_price").value = data.buying_price;
+        document.getElementById("upload_selling_price").value = data.selling_price;
+        document.getElementById("upload_quantity").value = '';
+      }
+    });
+}
+  function checkItemCode() {
+    const code = document.getElementById("upload_code").value.trim();
+
+    if (code === "") return;
+
+    fetch(`/get-product/${code}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.exists) {
+          // Fill the fields
+          document.getElementById("upload_name").value = data.item_name;
+          document.getElementById("upload_buying").value = data.buying_price;
+          document.getElementById("upload_selling").value = data.selling_price;
+
+          // Make name field read-only
+          document.getElementById("upload_name").readOnly = true;
+        } else {
+          // Clear and allow editing
+          document.getElementById("upload_name").value = "";
+          document.getElementById("upload_buying").value = "";
+          document.getElementById("upload_selling").value = "";
+          document.getElementById("upload_name").readOnly = false;
         }
       });
   }
