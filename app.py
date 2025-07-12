@@ -274,18 +274,24 @@ def record_sale():
 
 @app.route('/get-product/<item_code>')
 def get_product(item_code):
-    cursor.execute("SELECT item_name, buying_price, in_stock FROM products WHERE item_code = %s", (item_code,))
+    cursor.execute("""
+        SELECT item_name, buying_price, selling_price, in_stock
+        FROM products
+        WHERE item_code = %s
+    """, (item_code,))
     product = cursor.fetchone()
 
     if product:
-        item_name, buying_price, in_stock = product
+        item_name, buying_price, selling_price, in_stock = product
         return jsonify({
+            'exists': True,
             'item_name': item_name,
             'buying_price': float(buying_price),
+            'selling_price': float(selling_price),
             'in_stock': in_stock
         })
     else:
-        return jsonify({'error': 'Product not found'})
+        return jsonify({'exists': False})
 
 @app.route("/actions")
 def actions():
