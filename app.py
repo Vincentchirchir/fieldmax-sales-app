@@ -500,6 +500,34 @@ def stock_warnings():
         low_stock_items=low_stock_items
     )
 
+@app.route('/stock-level')
+def stock_level():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    cur = conn.cursor()
+
+    cur.execute("SELECT first_name, last_name FROM users WHERE id = %s", (user_id,))
+    user = cur.fetchone()
+    user_first_name, user_last_name = user if user else ("User", "")
+
+    cur.execute("""
+        SELECT item_code, item_name, buying_price, selling_price, all_stock, in_stock
+        FROM products
+        ORDER BY item_code ASC
+    """)
+    stock_items = cur.fetchall()
+
+    greeting = get_greeting(user_first_name)
+
+    return render_template(
+        "stock_level.html",
+        user_first_name=user_first_name,
+        user_last_name=user_last_name,
+        greeting=greeting,
+        stock_items=stock_items
+    )
 
 @app.route('/')
 def home():
