@@ -493,7 +493,7 @@ def stock_warnings():
     user = cur.fetchone()
     user_first_name, user_last_name = user if user else ("User", "")
 
-    cur.execute("SELECT item_code, item_name, in_stock FROM products WHERE in_stock <= 5")
+    cur.execute("SELECT item_code, item_name, in_stock FROM products WHERE in_stock <= 5 ORDER BY in_stock ASC")
     low_stock_items = cur.fetchall()
 
     greeting = get_greeting(user_first_name)
