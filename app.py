@@ -410,6 +410,7 @@ def dashboard():
         latest_sales=latest_sales,
         top_selling_items=top_selling_items,
         low_stock_items=low_stock_items,
+        latest_products=latest_products,
         datetime=datetime
     )
 
