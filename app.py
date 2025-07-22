@@ -385,7 +385,7 @@ def dashboard():
         FROM stock_entries s
         JOIN products p ON s.item_code = p.item_code
         ORDER BY s.date_received DESC
-        LIMIT 10
+        LIMIT 5
     """)
     latest_products = cursor.fetchall()
 
