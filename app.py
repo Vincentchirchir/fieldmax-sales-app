@@ -48,8 +48,8 @@ def allowed_file(filename):
 conn = psycopg2.connect(
     host='dpg-d1i10rili9vc73d54u5g-a.oregon-postgres.render.com',
     dbname='fieldmax_db_exx4',
-    user='fieldmax_db_exx4_user',
-    password='lAvVBkjMXyUrxGPBkAYWzYQNJKaOiN5j',
+    user='fieldmaxdb_f4ih_user',
+    password='YkpLHdqwVYFXREHYvcmB4zUL0WeqfxH4',
     port='5432'
 )
 cursor = conn.cursor()
